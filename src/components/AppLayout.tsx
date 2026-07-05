@@ -21,19 +21,26 @@ const pageTitles: Record<string, { title: string; sub: string }> = {
 export default function AppLayout() {
   const location = useLocation();
   const { user, isAdmin } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth > 900 : true
+  );
   const page = pageTitles[location.pathname] ?? { title: 'Train to Transform', sub: '' };
+
+  const closeOnMobile = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) setSidebarOpen(false);
+  };
 
   return (
     <div className="app-layout">
-      <Sidebar collapsed={collapsed} />
-      <div className={`main-content${collapsed ? ' expanded' : ''}`}>
+      <Sidebar open={sidebarOpen} onNavigate={closeOnMobile} />
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+      <div className={`main-content${sidebarOpen ? '' : ' expanded'}`}>
         <header className="topbar">
           <div className="topbar-left">
             <button
               className="topbar-btn sidebar-toggle"
-              onClick={() => setCollapsed(v => !v)}
-              title={collapsed ? 'Show sidebar' : 'Hide sidebar'}
+              onClick={() => setSidebarOpen(v => !v)}
+              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
               aria-label="Toggle sidebar"
             >
               <PanelLeft size={16} />
@@ -51,7 +58,7 @@ export default function AppLayout() {
               </div>
             )}
             {user && (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '4px 10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}>
+              <div className="topbar-username" style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '4px 10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}>
                 {user.name}
               </div>
             )}

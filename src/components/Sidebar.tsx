@@ -51,7 +51,7 @@ const navGroups = [
   }
 ];
 
-export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
+export default function Sidebar({ open = true, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const { profile } = useApp();
   const { isAdmin, user, logout } = useAuth();
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
-    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+    <aside className={`sidebar${open ? '' : ' closed'}`}>
       <div className="sidebar-logo">
         <div className="logo-mark">
           <div className="logo-icon">🏋️</div>
@@ -95,6 +95,7 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
               to="/admin"
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               style={{ background: 'rgba(245,166,35,0.08)', borderColor: 'rgba(245,166,35,0.2)', color: 'var(--gold-light)' }}
+              onClick={onNavigate}
             >
               <ShieldCheck className="nav-icon" size={18} style={{ color: 'var(--gold)' }} />
               Admin Dashboard
@@ -110,6 +111,7 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
                   to={item.to}
                   end={item.to === '/'}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                  onClick={onNavigate}
                 >
                   <item.icon className="nav-icon" size={18} />
                   {item.label}

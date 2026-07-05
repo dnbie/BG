@@ -1,5 +1,15 @@
 .admin-page { }
 
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .admin-form-grid { grid-template-columns: 1fr; }
+}
+
 .admin-stat-row {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
