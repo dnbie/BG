@@ -39,7 +39,7 @@ ${topPR ? `Top PR: ${topPR.exercise} ${topPR.weight > 0 ? topPR.weight + 'kg' : 
 }
 
 export default function AICoach() {
-  const { isConnected, getInsights, model } = useOllama();
+  const { isConnected, getInsights, model, provider } = useOllama();
   const { profile, steps, measurements, prs, sleep, nutrition, workouts } = useApp();
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +69,7 @@ export default function AICoach() {
           </div>
           <div>
             <div className="ai-coach-title">AI Coach</div>
-            <div className="ai-coach-sub">Powered by {isConnected ? model : 'Ollama'}</div>
+            <div className="ai-coach-sub">Powered by {isConnected ? `${provider === 'cloud' ? 'Cloud AI' : 'Ollama'} · ${model}` : 'AI'}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

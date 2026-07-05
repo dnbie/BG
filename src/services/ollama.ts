@@ -44,6 +44,45 @@ export async function listOllamaModels(baseUrl: string): Promise<OllamaModelInfo
   }
 }
 
+// ── Cloud backend (Vercel serverless → Groq) ────────────────────────────────────
+
+export const CLOUD_ENDPOINT = '/api/ai';
+
+export interface CloudInfo {
+  ok: boolean;
+  provider: string;
+  model: string;
+}
+
+// Checks whether the hosted /api/ai function is available (used when deployed).
+export async function checkCloudConnection(): Promise<CloudInfo | null> {
+  try {
+    const res = await fetch(CLOUD_ENDPOINT, { method: 'GET', signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.ok ? (json as CloudInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function cloudGenerate(prompt: string, temperature = 0.1): Promise<string> {
+  const res = await fetch(CLOUD_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, temperature }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`AI API error ${res.status}: ${err}`);
+  }
+
+  const json = await res.json();
+  return json.response as string;
+}
+
 // ── File reading helpers ───────────────────────────────────────────────────────
 
 export async function readFileAsText(file: File): Promise<string> {
@@ -124,16 +163,30 @@ async function ollamaGenerate(
   return json.response as string;
 }
 
+// Routes a generation request to the cloud backend (deployed) or local Ollama (dev).
+async function generate(
+  baseUrl: string,
+  model: string,
+  prompt: string,
+  temperature: number,
+  useCloud: boolean,
+): Promise<string> {
+  return useCloud
+    ? cloudGenerate(prompt, temperature)
+    : ollamaGenerate(baseUrl, model, prompt, temperature);
+}
+
 export async function parseDataWithOllama(
   baseUrl: string,
   model: string,
   rawContent: string,
+  useCloud = false,
 ): Promise<ParseResult> {
   // Truncate to 5000 chars to fit context window
   const truncated = rawContent.length > 5000 ? rawContent.slice(0, 5000) + '\n[...truncated]' : rawContent;
   const prompt = PARSE_SCHEMA_PROMPT + truncated;
 
-  const raw = await ollamaGenerate(baseUrl, model, prompt, 0.05);
+  const raw = await generate(baseUrl, model, prompt, 0.05, useCloud);
 
   let parsed: Record<string, unknown>;
   try {
@@ -158,9 +211,10 @@ export async function getAICoachInsights(
   baseUrl: string,
   model: string,
   clientData: string,
+  useCloud = false,
 ): Promise<CoachInsights> {
   const prompt = `${INSIGHTS_SYSTEM}\n\nClient data:\n${clientData}`;
-  const raw = await ollamaGenerate(baseUrl, model, prompt, 0.7);
+  const raw = await generate(baseUrl, model, prompt, 0.7, useCloud);
 
   let parsed: Record<string, unknown>;
   try {

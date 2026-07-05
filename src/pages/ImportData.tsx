@@ -57,7 +57,7 @@ function safeStr(v: unknown, fallback = ''): string {
 type Step = 'upload' | 'parsing' | 'preview' | 'done';
 
 export default function ImportData() {
-  const { parseData, isConnected, isChecking, checkConnection, baseUrl, setBaseUrl, model, setModel, availableModels } = useOllama();
+  const { parseData, isConnected, isChecking, checkConnection, baseUrl, setBaseUrl, model, setModel, availableModels, provider } = useOllama();
   const { setSteps, setMeasurements, setPRs, setSleep, setNutrition, setWorkouts, steps, measurements, prs, sleep, nutrition, workouts } = useApp();
 
   const [step, setStep] = useState<Step>('upload');
@@ -177,7 +177,7 @@ export default function ImportData() {
         </div>
         <div className={`ollama-status-pill ${isConnected ? 'connected' : 'disconnected'}`}>
           {isChecking ? <RefreshCw size={13} className="spin" /> : isConnected ? <Wifi size={13} /> : <WifiOff size={13} />}
-          {isChecking ? 'Checking…' : isConnected ? `Ollama · ${model}` : 'Ollama offline'}
+          {isChecking ? 'Checking…' : isConnected ? `${provider === 'cloud' ? 'Cloud AI' : 'Ollama'} · ${model}` : 'AI offline'}
           {!isConnected && !isChecking && (
             <button className="pill-btn" onClick={checkConnection}>Retry</button>
           )}
@@ -201,7 +201,8 @@ export default function ImportData() {
             <div className="ollama-warning">
               <AlertCircle size={16} />
               <div>
-                <strong>Ollama is not running.</strong> Start Ollama locally to enable AI parsing.
+                <strong>AI service unavailable.</strong> For local development, start Ollama.
+                On the deployed site, AI runs automatically via the cloud backend.
                 <a href="https://ollama.com/download" target="_blank" rel="noreferrer" style={{ color: 'var(--blue)', marginLeft: 8 }}>
                   Download Ollama →
                 </a>

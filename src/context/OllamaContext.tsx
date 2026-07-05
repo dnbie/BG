@@ -3,11 +3,14 @@ import type { ReactNode } from 'react';
 import {
   checkOllamaConnection, listOllamaModels,
   parseDataWithOllama, getAICoachInsights,
+  checkCloudConnection,
 } from '../services/ollama';
 import type { ParseResult, CoachInsights, OllamaModelInfo } from '../services/ollama';
 
 const DEFAULT_URL = 'http://localhost:11434';
 const DEFAULT_MODEL = 'llama3.2';
+
+export type AIProvider = 'ollama' | 'cloud' | 'none';
 
 interface OllamaContextValue {
   baseUrl: string;
@@ -16,6 +19,7 @@ interface OllamaContextValue {
   setModel: (m: string) => void;
   isConnected: boolean;
   isChecking: boolean;
+  provider: AIProvider;
   availableModels: OllamaModelInfo[];
   checkConnection: () => Promise<void>;
   parseData: (rawContent: string) => Promise<ParseResult>;
@@ -29,13 +33,16 @@ export const OllamaProvider = ({ children }: { children: ReactNode }) => {
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [isConnected, setIsConnected] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [provider, setProvider] = useState<AIProvider>('none');
   const [availableModels, setAvailableModels] = useState<OllamaModelInfo[]>([]);
 
   const checkConnection = useCallback(async () => {
     setIsChecking(true);
+    // Prefer a local Ollama instance (dev); fall back to the hosted cloud backend.
     const ok = await checkOllamaConnection(baseUrl);
-    setIsConnected(ok);
     if (ok) {
+      setProvider('ollama');
+      setIsConnected(true);
       const models = await listOllamaModels(baseUrl);
       setAvailableModels(models);
       // Auto-select first model if current model isn't available
@@ -43,7 +50,17 @@ export const OllamaProvider = ({ children }: { children: ReactNode }) => {
         setModel(models[0].name);
       }
     } else {
-      setAvailableModels([]);
+      const cloud = await checkCloudConnection();
+      if (cloud) {
+        setProvider('cloud');
+        setIsConnected(true);
+        setModel(cloud.model);
+        setAvailableModels([]);
+      } else {
+        setProvider('none');
+        setIsConnected(false);
+        setAvailableModels([]);
+      }
     }
     setIsChecking(false);
   }, [baseUrl, model]);
@@ -52,13 +69,13 @@ export const OllamaProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { checkConnection(); }, [baseUrl]); // eslint-disable-line
 
   const parseData = useCallback(
-    (rawContent: string) => parseDataWithOllama(baseUrl, model, rawContent),
-    [baseUrl, model],
+    (rawContent: string) => parseDataWithOllama(baseUrl, model, rawContent, provider === 'cloud'),
+    [baseUrl, model, provider],
   );
 
   const getInsights = useCallback(
-    (clientData: string) => getAICoachInsights(baseUrl, model, clientData),
-    [baseUrl, model],
+    (clientData: string) => getAICoachInsights(baseUrl, model, clientData, provider === 'cloud'),
+    [baseUrl, model, provider],
   );
 
   return (
@@ -66,6 +83,7 @@ export const OllamaProvider = ({ children }: { children: ReactNode }) => {
       baseUrl, setBaseUrl,
       model, setModel,
       isConnected, isChecking,
+      provider,
       availableModels,
       checkConnection,
       parseData,
